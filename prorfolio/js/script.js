@@ -325,59 +325,220 @@ function initProjectModals() {
 }
 
 /* --------------------------------------------------------------------------
-   7. CONTACT FORM VALIDATION & SIMULATION
+   7. BACKEND EMAIL SERVICE (WEB3FORMS API INTEGRATION)
+   Delivers messages directly to mr2600@fayoum.edu.eg
    -------------------------------------------------------------------------- */
+
+// ==========================================================================
+// 🔑 WEB3FORMS CONFIGURATION
+// To receive emails directly to mr2600@fayoum.edu.eg:
+// 1. Visit https://web3forms.com
+// 2. Enter your email (mr2600@fayoum.edu.eg) and click "Create Access Key"
+// 3. Check your email for your Access Key and paste it below between the quotes:
+// ==========================================================================
+const EMAIL_CONFIG = {
+  recipientEmail: 'mr2600@fayoum.edu.eg',
+  web3FormsAccessKey: '5056d179-fc2d-424e-9611-55658904ac64',
+};
+
 function initContactForm() {
   const form = document.getElementById('contactForm');
   const statusMsg = document.getElementById('formStatusMsg');
+  const statusIcon = document.getElementById('formStatusIcon');
+  const statusText = document.getElementById('formStatusText');
   const sendBtn = document.getElementById('sendMessageBtn');
 
-  if (!form || !statusMsg) return;
+  if (!form || !statusMsg || !sendBtn) return;
 
-  form.addEventListener('submit', (e) => {
+  const nameInput = document.getElementById('contactName');
+  const emailInput = document.getElementById('contactEmail');
+  const subjectInput = document.getElementById('contactSubject');
+  const messageInput = document.getElementById('contactMessage');
+  const botcheckField = document.getElementById('botcheckField');
+
+  const nameError = document.getElementById('nameError');
+  const emailError = document.getElementById('emailError');
+  const subjectError = document.getElementById('subjectError');
+  const messageError = document.getElementById('messageError');
+
+  // Helper: Email format validator
+  const isValidEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  // Helper: Real-time field validation
+  const validateField = (input, errorEl, condition) => {
+    if (!condition) {
+      input.classList.add('is-invalid');
+      if (errorEl) errorEl.classList.add('visible');
+      return false;
+    } else {
+      input.classList.remove('is-invalid');
+      if (errorEl) errorEl.classList.remove('visible');
+      return true;
+    }
+  };
+
+  // Attach live input validation listeners
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      validateField(nameInput, nameError, nameInput.value.trim().length >= 2);
+    });
+  }
+  if (emailInput) {
+    emailInput.addEventListener('input', () => {
+      validateField(emailInput, emailError, isValidEmail(emailInput.value.trim()));
+    });
+  }
+  if (subjectInput) {
+    subjectInput.addEventListener('input', () => {
+      validateField(subjectInput, subjectError, subjectInput.value.trim().length >= 2);
+    });
+  }
+  if (messageInput) {
+    messageInput.addEventListener('input', () => {
+      validateField(messageInput, messageError, messageInput.value.trim().length >= 10);
+    });
+  }
+
+  // Form submission handler
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const name = document.getElementById('contactName').value.trim();
-    const email = document.getElementById('contactEmail').value.trim();
-    const subject = document.getElementById('contactSubject').value.trim();
-    const message = document.getElementById('contactMessage').value.trim();
-
-    if (!name || !email || !subject || !message) {
-      alert('Please fill out all required fields.');
+    // Anti-spam botcheck: If checked, silently drop
+    if (botcheckField && botcheckField.checked) {
+      console.warn('Bot detected via botcheck.');
       return;
     }
 
-    if (sendBtn) {
-      sendBtn.disabled = true;
-      sendBtn.innerHTML = `<span>Sending...</span>`;
+    // Validate all fields
+    const isNameValid = validateField(nameInput, nameError, nameInput.value.trim().length >= 2);
+    const isEmailValid = validateField(emailInput, emailError, isValidEmail(emailInput.value.trim()));
+    const isSubjectValid = validateField(subjectInput, subjectError, subjectInput.value.trim().length >= 2);
+    const isMessageValid = validateField(messageInput, messageError, messageInput.value.trim().length >= 10);
+
+    if (!isNameValid || !isEmailValid || !isSubjectValid || !isMessageValid) {
+      showStatus('error', 'Please fill out all required fields properly before sending.');
+      return;
     }
 
-    setTimeout(() => {
-      statusMsg.classList.add('success');
-      statusMsg.textContent = `Thank you, ${name}! Your message has been recorded. Feel free to connect directly on LinkedIn or Instagram.`;
-      form.reset();
+    // Check if Access Key has been configured
+    if (!EMAIL_CONFIG.web3FormsAccessKey || EMAIL_CONFIG.web3FormsAccessKey.trim() === '' || EMAIL_CONFIG.web3FormsAccessKey.includes('PASTE')) {
+      showStatus('error', `
+        <strong>Web3Forms Access Key Required:</strong><br>
+        To enable real email delivery to <strong>${EMAIL_CONFIG.recipientEmail}</strong>:<br>
+        1. Get your free key instantly at <a href="https://web3forms.com" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;color:inherit;font-weight:700;">web3forms.com</a>.<br>
+        2. Open <code>js/script.js</code> and paste your key into <code>web3FormsAccessKey</code>.
+      `);
+      return;
+    }
 
-      if (sendBtn) {
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = `
-          <span>Message Sent!</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        `;
+    const payload = {
+      access_key: EMAIL_CONFIG.web3FormsAccessKey.trim(),
+      name: nameInput.value.trim(),
+      email: emailInput.value.trim(),
+      subject: `[Portfolio Inquiry] ${subjectInput.value.trim()}`,
+      message: messageInput.value.trim(),
+      from_name: `${nameInput.value.trim()} (Portfolio Visitor)`,
+      replyto: emailInput.value.trim()
+    };
 
+    // Set Loading State
+    setButtonState('loading');
+    hideStatus();
+
+    try {
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (response.status === 200 && result.success) {
+        // GENUINE SERVER-VERIFIED SUCCESS STATE
+        setButtonState('success');
+        showStatus('success', `Thank you, ${payload.name}! Your message has been sent successfully to Mohamed Ragab (<strong>${EMAIL_CONFIG.recipientEmail}</strong>). I will get back to you promptly!`);
+        form.reset();
+
+        // Clear invalid borders
+        [nameInput, emailInput, subjectInput, messageInput].forEach(el => el && el.classList.remove('is-invalid'));
+
+        // Restore button after 5 seconds
         setTimeout(() => {
-          sendBtn.innerHTML = `
-            <span>Send Message</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-          `;
-        }, 4000);
+          setButtonState('idle');
+        }, 5000);
+      } else {
+        // GENUINE SERVER ERROR
+        throw new Error(result.message || 'Web3Forms API returned an error.');
       }
-    }, 600);
+    } catch (err) {
+      console.error('Contact Form Submission Error:', err);
+      setButtonState('idle');
+      showStatus('error', `Submission Error: ${err.message || 'Could not connect to email server.'} You can also email directly at <a href="mailto:${EMAIL_CONFIG.recipientEmail}?subject=${encodeURIComponent(payload.subject)}&body=${encodeURIComponent(payload.message)}" style="text-decoration:underline;color:inherit;font-weight:700;">${EMAIL_CONFIG.recipientEmail}</a>.`);
+    }
   });
+
+  // UI State Helpers
+  function setButtonState(state) {
+    if (state === 'loading') {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = `
+        <span class="btn-spinner"></span>
+        <span>Sending Message...</span>
+      `;
+    } else if (state === 'success') {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = `
+        <span>Message Sent!</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      `;
+    } else {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = `
+        <span class="btn-text">Send Message</span>
+        <span class="btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </span>
+      `;
+    }
+  }
+
+  function showStatus(type, messageHtml) {
+    statusMsg.className = `form-status-msg ${type}`;
+    if (type === 'success') {
+      statusIcon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      `;
+    } else {
+      statusIcon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      `;
+    }
+    statusText.innerHTML = messageHtml;
+    statusMsg.style.display = 'flex';
+  }
+
+  function hideStatus() {
+    statusMsg.style.display = 'none';
+    statusMsg.className = 'form-status-msg';
+  }
 }
 
 /* --------------------------------------------------------------------------
