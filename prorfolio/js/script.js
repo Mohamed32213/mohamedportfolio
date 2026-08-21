@@ -5,7 +5,8 @@
  * ==========================================================================
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize all modules once the DOM is ready
+function initApp() {
   initTheme();
   initNavbar();
   initMobileMenu();
@@ -14,7 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initProjectModals();
   initContactForm();
   initBackToTop();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 /* --------------------------------------------------------------------------
    1. THEME MANAGER (DARK / LIGHT MODE)
@@ -325,17 +332,9 @@ function initProjectModals() {
 }
 
 /* --------------------------------------------------------------------------
-   7. BACKEND EMAIL SERVICE (WEB3FORMS API INTEGRATION)
+   7. BACKEND EMAIL SERVICE (WEB3FORMS REST API)
    Delivers messages directly to mr2600@fayoum.edu.eg
    -------------------------------------------------------------------------- */
-
-// ==========================================================================
-// 🔑 WEB3FORMS CONFIGURATION
-// To receive emails directly to mr2600@fayoum.edu.eg:
-// 1. Visit https://web3forms.com
-// 2. Enter your email (mr2600@fayoum.edu.eg) and click "Create Access Key"
-// 3. Check your email for your Access Key and paste it below between the quotes:
-// ==========================================================================
 const EMAIL_CONFIG = {
   recipientEmail: 'mr2600@fayoum.edu.eg',
   web3FormsAccessKey: '5056d179-fc2d-424e-9611-55658904ac64',
@@ -361,12 +360,12 @@ function initContactForm() {
   const subjectError = document.getElementById('subjectError');
   const messageError = document.getElementById('messageError');
 
-  // Helper: Email format validator
+  // Email format validator regex
   const isValidEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  // Helper: Real-time field validation
+  // Real-time field validator
   const validateField = (input, errorEl, condition) => {
     if (!condition) {
       input.classList.add('is-invalid');
@@ -379,31 +378,39 @@ function initContactForm() {
     }
   };
 
-  // Attach live input validation listeners
+  // Live input listeners to clear errors as user types
   if (nameInput) {
     nameInput.addEventListener('input', () => {
-      validateField(nameInput, nameError, nameInput.value.trim().length >= 2);
+      if (nameInput.value.trim().length >= 2) {
+        validateField(nameInput, nameError, true);
+      }
     });
   }
   if (emailInput) {
     emailInput.addEventListener('input', () => {
-      validateField(emailInput, emailError, isValidEmail(emailInput.value.trim()));
+      if (isValidEmail(emailInput.value.trim())) {
+        validateField(emailInput, emailError, true);
+      }
     });
   }
   if (subjectInput) {
     subjectInput.addEventListener('input', () => {
-      validateField(subjectInput, subjectError, subjectInput.value.trim().length >= 2);
+      if (subjectInput.value.trim().length >= 2) {
+        validateField(subjectInput, subjectError, true);
+      }
     });
   }
   if (messageInput) {
     messageInput.addEventListener('input', () => {
-      validateField(messageInput, messageError, messageInput.value.trim().length >= 10);
+      if (messageInput.value.trim().length >= 5) {
+        validateField(messageInput, messageError, true);
+      }
     });
   }
 
-  // Form submission handler
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  // Handle Form Submission
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
 
     // Anti-spam botcheck: If checked, silently drop
     if (botcheckField && botcheckField.checked) {
@@ -411,36 +418,67 @@ function initContactForm() {
       return;
     }
 
-    // Validate all fields
-    const isNameValid = validateField(nameInput, nameError, nameInput.value.trim().length >= 2);
-    const isEmailValid = validateField(emailInput, emailError, isValidEmail(emailInput.value.trim()));
-    const isSubjectValid = validateField(subjectInput, subjectError, subjectInput.value.trim().length >= 2);
-    const isMessageValid = validateField(messageInput, messageError, messageInput.value.trim().length >= 10);
+    const nameVal = nameInput ? nameInput.value.trim() : '';
+    const emailVal = emailInput ? emailInput.value.trim() : '';
+    const subjectVal = subjectInput ? subjectInput.value.trim() : '';
+    const messageVal = messageInput ? messageInput.value.trim() : '';
 
-    if (!isNameValid || !isEmailValid || !isSubjectValid || !isMessageValid) {
-      showStatus('error', 'Please fill out all required fields properly before sending.');
+    // Validate each field
+    const isNameValid = validateField(nameInput, nameError, nameVal.length >= 2);
+    const isEmailValid = validateField(emailInput, emailError, isValidEmail(emailVal));
+    const isSubjectValid = validateField(subjectInput, subjectError, subjectVal.length >= 2);
+    const isMessageValid = validateField(messageInput, messageError, messageVal.length >= 5);
+
+    // Build specific list of missing/invalid inputs
+    const missingFields = [];
+    let firstInvalidElement = null;
+
+    if (!isNameValid) {
+      missingFields.push('Your Name');
+      if (!firstInvalidElement) firstInvalidElement = nameInput;
+    }
+    if (!isEmailValid) {
+      missingFields.push('Valid Email Address');
+      if (!firstInvalidElement) firstInvalidElement = emailInput;
+    }
+    if (!isSubjectValid) {
+      missingFields.push('Subject');
+      if (!firstInvalidElement) firstInvalidElement = subjectInput;
+    }
+    if (!isMessageValid) {
+      missingFields.push('Message');
+      if (!firstInvalidElement) firstInvalidElement = messageInput;
+    }
+
+    // If validation fails
+    if (missingFields.length > 0) {
+      // Button shake feedback
+      sendBtn.classList.add('shake');
+      setTimeout(() => sendBtn.classList.remove('shake'), 500);
+
+      // Focus first invalid element
+      if (firstInvalidElement) {
+        firstInvalidElement.focus();
+      }
+
+      showStatus('error', `Please fill out all required fields: <strong>${missingFields.join(', ')}</strong>.`);
       return;
     }
 
-    // Check if Access Key has been configured
-    if (!EMAIL_CONFIG.web3FormsAccessKey || EMAIL_CONFIG.web3FormsAccessKey.trim() === '' || EMAIL_CONFIG.web3FormsAccessKey.includes('PASTE')) {
-      showStatus('error', `
-        <strong>Web3Forms Access Key Required:</strong><br>
-        To enable real email delivery to <strong>${EMAIL_CONFIG.recipientEmail}</strong>:<br>
-        1. Get your free key instantly at <a href="https://web3forms.com" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;color:inherit;font-weight:700;">web3forms.com</a>.<br>
-        2. Open <code>js/script.js</code> and paste your key into <code>web3FormsAccessKey</code>.
-      `);
+    // Check if Access Key is configured
+    if (!EMAIL_CONFIG.web3FormsAccessKey || EMAIL_CONFIG.web3FormsAccessKey.trim() === '') {
+      showStatus('error', `Web3Forms Access Key is missing. Please check <code>js/script.js</code>.`);
       return;
     }
 
     const payload = {
       access_key: EMAIL_CONFIG.web3FormsAccessKey.trim(),
-      name: nameInput.value.trim(),
-      email: emailInput.value.trim(),
-      subject: `[Portfolio Inquiry] ${subjectInput.value.trim()}`,
-      message: messageInput.value.trim(),
-      from_name: `${nameInput.value.trim()} (Portfolio Visitor)`,
-      replyto: emailInput.value.trim()
+      name: nameVal,
+      email: emailVal,
+      subject: `[Portfolio Inquiry] ${subjectVal}`,
+      message: messageVal,
+      from_name: `${nameVal} (Portfolio Contact)`,
+      replyto: emailVal
     };
 
     // Set Loading State
@@ -460,28 +498,30 @@ function initContactForm() {
       const result = await response.json();
 
       if (response.status === 200 && result.success) {
-        // GENUINE SERVER-VERIFIED SUCCESS STATE
+        // GENUINE SUCCESS
         setButtonState('success');
-        showStatus('success', `Thank you, ${payload.name}! Your message has been sent successfully to Mohamed Ragab (<strong>${EMAIL_CONFIG.recipientEmail}</strong>). I will get back to you promptly!`);
+        showStatus('success', `Thank you, <strong>${payload.name}</strong>! Your message has been sent directly to Mohamed Ragab (<strong>${EMAIL_CONFIG.recipientEmail}</strong>). I will reply promptly!`);
         form.reset();
 
-        // Clear invalid borders
+        // Clear all invalid markers
         [nameInput, emailInput, subjectInput, messageInput].forEach(el => el && el.classList.remove('is-invalid'));
 
-        // Restore button after 5 seconds
+        // Restore button state after 5 seconds
         setTimeout(() => {
           setButtonState('idle');
         }, 5000);
       } else {
-        // GENUINE SERVER ERROR
-        throw new Error(result.message || 'Web3Forms API returned an error.');
+        // SERVER RETURNED ERROR
+        throw new Error(result.message || 'Web3Forms API rejected the message.');
       }
     } catch (err) {
-      console.error('Contact Form Submission Error:', err);
+      console.error('Contact Form Error:', err);
       setButtonState('idle');
-      showStatus('error', `Submission Error: ${err.message || 'Could not connect to email server.'} You can also email directly at <a href="mailto:${EMAIL_CONFIG.recipientEmail}?subject=${encodeURIComponent(payload.subject)}&body=${encodeURIComponent(payload.message)}" style="text-decoration:underline;color:inherit;font-weight:700;">${EMAIL_CONFIG.recipientEmail}</a>.`);
+      showStatus('error', `Submission failed: ${err.message || 'Unable to connect to email server.'} You can also email directly at <a href="mailto:${EMAIL_CONFIG.recipientEmail}?subject=${encodeURIComponent(payload.subject)}&body=${encodeURIComponent(payload.message)}" style="text-decoration:underline;color:inherit;font-weight:700;">${EMAIL_CONFIG.recipientEmail}</a>.`);
     }
-  });
+  };
+
+  form.addEventListener('submit', handleSubmit);
 
   // UI State Helpers
   function setButtonState(state) {
