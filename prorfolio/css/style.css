@@ -31,6 +31,8 @@
   --success-subtle: rgba(16, 185, 129, 0.12);
   --warning: #F59E0B;
   --warning-subtle: rgba(245, 158, 11, 0.12);
+  --danger: #EF4444;
+  --danger-subtle: rgba(239, 68, 68, 0.12);
   --purple: #8B5CF6;
   --purple-subtle: rgba(139, 92, 246, 0.12);
   --cyan: #06B6D4;
@@ -560,6 +562,7 @@ p {
   transition: all var(--transition-fast);
   text-decoration: none;
   cursor: pointer;
+  position: relative;
 }
 
 .btn-primary {
@@ -569,10 +572,16 @@ p {
   border: 1px solid transparent;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   box-shadow: 0 6px 20px var(--accent-glow);
   transform: translateY(-2px);
   color: #FFFFFF;
+}
+
+.btn-primary:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary {
@@ -594,8 +603,35 @@ p {
   transition: transform var(--transition-fast);
 }
 
-.btn-primary:hover svg {
+.btn-primary:hover:not(:disabled) svg {
   transform: translateX(3px);
+}
+
+/* Loading Spinner */
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Button Shake Animation for validation error feedback */
+.btn.shake {
+  animation: btnShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes btnShake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(3px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+  40%, 60% { transform: translate3d(5px, 0, 0); }
 }
 
 /* Hero Visual: Mini Analytics Dashboard Mockup Card */
@@ -836,15 +872,15 @@ p {
 .avatar-wrapper {
   position: relative;
   width: 300px;
-  height: 340px;
+  height: auto;
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-secondary) 100%);
   border: 2px solid var(--border-hover);
   padding: 0.6rem;
   box-shadow: 0 12px 36px var(--accent-glow);
-  overflow: hidden;
+  overflow: visible;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
@@ -857,12 +893,12 @@ p {
 
 .profile-avatar-img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 20%;
+  height: auto;
+  object-fit: contain;
   border-radius: calc(var(--radius-lg) - 6px);
   filter: contrast(1.04) brightness(1.02);
   transition: transform 0.5s ease;
+  display: block;
 }
 
 .avatar-wrapper:hover .profile-avatar-img {
@@ -2003,10 +2039,12 @@ p {
   border-radius: var(--radius-lg);
   padding: 2.5rem;
   box-shadow: var(--shadow-md);
+  position: relative;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.35rem;
+  position: relative;
 }
 
 .form-label {
@@ -2014,7 +2052,7 @@ p {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.45rem;
 }
 
 .form-control {
@@ -2026,7 +2064,7 @@ p {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   outline: none;
 }
 
@@ -2035,25 +2073,81 @@ p {
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+.form-control.is-invalid {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px var(--danger-subtle) !important;
+}
+
+.field-error-msg {
+  display: none;
+  font-size: 0.8rem;
+  color: #F87171;
+  margin-top: 0.35rem;
+  font-weight: 500;
+}
+
+[data-theme="light"] .field-error-msg {
+  color: #DC2626;
+}
+
+.field-error-msg.visible {
+  display: block;
+}
+
 textarea.form-control {
   resize: vertical;
   min-height: 130px;
 }
 
+/* Status Notifications (Success / Error) */
 .form-status-msg {
   display: none;
-  padding: 0.85rem;
+  padding: 1.1rem 1.25rem;
   border-radius: var(--radius-md);
-  margin-top: 1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
+  margin-top: 1.25rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  animation: fadeInDown 0.35s ease;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .form-status-msg.success {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
   background: var(--success-subtle);
   border: 1px solid var(--success);
   color: var(--success);
+}
+
+.form-status-msg.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger);
+  color: #FCA5A5;
+}
+
+[data-theme="light"] .form-status-msg.error {
+  color: #B91C1C;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.form-status-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+
+.form-status-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* --------------------------------------------------------------------------
@@ -2228,7 +2322,7 @@ textarea.form-control {
   }
   .avatar-wrapper {
     width: 260px;
-    height: 300px;
+    height: auto;
   }
 }
 
@@ -2244,7 +2338,7 @@ textarea.form-control {
   }
   .avatar-wrapper {
     width: 240px;
-    height: 280px;
+    height: auto;
   }
   .projects-grid {
     grid-template-columns: 1fr;
@@ -2323,7 +2417,7 @@ textarea.form-control {
   }
   .avatar-wrapper {
     width: 220px;
-    height: 260px;
+    height: auto;
   }
   .workflow-steps-grid {
     grid-template-columns: repeat(2, 1fr);
