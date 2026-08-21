@@ -1124,37 +1124,48 @@
 
         <!-- Right: Contact Form -->
         <div class="contact-form-card reveal">
-          <form id="contactForm" onsubmit="return false;">
+          <form id="contactForm" novalidate>
+            <!-- Anti-spam Botcheck field (hidden from real users) -->
+            <input type="checkbox" name="botcheck" id="botcheckField" style="display:none;" tabindex="-1">
+
             <div class="form-group">
               <label for="contactName" class="form-label">Your Name</label>
-              <input type="text" id="contactName" name="name" class="form-control" placeholder="e.g. Sarah Jenkins" required>
+              <input type="text" id="contactName" name="name" class="form-control" placeholder="e.g. Sarah Jenkins" required autocomplete="name">
+              <div class="field-error-msg" id="nameError">Please enter your name (at least 2 characters).</div>
             </div>
 
             <div class="form-group">
               <label for="contactEmail" class="form-label">Email Address</label>
-              <input type="email" id="contactEmail" name="email" class="form-control" placeholder="e.g. sarah@company.com" required>
+              <input type="email" id="contactEmail" name="email" class="form-control" placeholder="e.g. sarah@company.com" required autocomplete="email">
+              <div class="field-error-msg" id="emailError">Please enter a valid email address.</div>
             </div>
 
             <div class="form-group">
               <label for="contactSubject" class="form-label">Subject</label>
               <input type="text" id="contactSubject" name="subject" class="form-control" placeholder="e.g. Data Analysis Internship / Project Inquiry" required>
+              <div class="field-error-msg" id="subjectError">Please provide a subject line.</div>
             </div>
 
             <div class="form-group">
               <label for="contactMessage" class="form-label">Message</label>
               <textarea id="contactMessage" name="message" class="form-control" placeholder="Describe the dataset, business challenge, or role..." required></textarea>
+              <div class="field-error-msg" id="messageError">Please enter a message (at least 10 characters).</div>
             </div>
 
             <button type="submit" class="btn btn-primary" id="sendMessageBtn" style="width: 100%;">
-              <span>Send Message</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
+              <span class="btn-text">Send Message</span>
+              <span class="btn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </span>
             </button>
 
-            <div class="form-status-msg" id="formStatusMsg">
-              Thank you! Your message has been prepared. Feel free to connect directly via LinkedIn or GitHub.
+            <!-- Status Alert Box (Success & Error States) -->
+            <div class="form-status-msg" id="formStatusMsg" role="alert" aria-live="polite">
+              <span class="form-status-icon" id="formStatusIcon"></span>
+              <div id="formStatusText"></div>
             </div>
           </form>
         </div>
